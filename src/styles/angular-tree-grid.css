@@ -1,0 +1,44 @@
+/*!
+ * Angular-tree-grid component v. 0.0.0
+ *
+ */
+.angular-tree-main-content {
+  position: relative;
+  font-size: 12px;
+  border-left: 1px solid #dddddd;
+  border-top: 1px solid #dddddd; }
+  .angular-tree-main-content div.tree-header {
+    background-color: blue;
+    color: white; }
+  .angular-tree-main-content div.tree-content {
+    background-color: white; }
+  .angular-tree-main-content div.tree-header {
+    border-bottom: 1px solid #dddddd;
+    cursor: pointer; }
+    .angular-tree-main-content div.tree-header div {
+      display: inline-block; }
+    .angular-tree-main-content div.tree-header div.header-cell {
+      padding: 7px 0 7px 20px;
+      border-right: 1px solid #dddddd; }
+  .angular-tree-main-content div.node {
+    border-bottom: 1px solid #dddddd;
+    cursor: pointer;
+    display: flex; }
+    .angular-tree-main-content div.node div {
+      display: inline-block; }
+    .angular-tree-main-content div.node div.cell-tree div {
+      display: table-cell !important; }
+    .angular-tree-main-content div.node div.cell-tree div.icon-content {
+      padding-right: 5px; }
+    .angular-tree-main-content div.node span.cell, .angular-tree-main-content div.node div.cell {
+      padding: 7px 0 7px 20px;
+      border-right: 1px solid #dddddd; }
+      .angular-tree-main-content div.node span.cell .icon-content, .angular-tree-main-content div.node div.cell .icon-content {
+        width: 20px;
+        text-align: center;
+        height: 20px;
+        vertical-align: middle; }
+    .angular-tree-main-content div.node:hover {
+      background-color: #737373; }
+
+/*# sourceMappingURL=main.css.map */

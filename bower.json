@@ -1,0 +1,26 @@
+{
+  "name": "angular-tree-grid",
+  "version": "0.0.0",
+  "homepage": "https://github.com/vladimir-poma/angular-tree-grid",
+  "authors": [
+    "vlad"
+  ],
+  "description": "Render a tree grid component.",
+  "main": [
+    "src/js/angular-tree-grid.js",
+    "src/styles/angular-tree-grid.css"
+  ],
+  "keywords": [
+    "Tree",
+    "grid",
+    "angular"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

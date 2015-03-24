@@ -1,0 +1,193 @@
+(function () {
+  'use strict';
+
+  angular.module('angular-tree-grid',[])
+    .directive('nodeTree', function ($compile) {
+      return {
+        restrict : 'E',
+        replace : true,
+        scope : {
+          item : "=nodeData",
+          childrenLabel : "=",
+          columnDef : '=columnDef',
+          tableConfiguration  : '=',
+          controls : '='
+        },
+        link : function (scope, element) {
+          scope.openLevel = function (item,$event) {
+            $event.stopPropagation();
+            item._isExpanded = !item._isExpanded;
+          };
+
+          var html = "<div class='node' ng-click='controls.onRowSelected(item)'>", def;
+
+          for ( var i = 0; i < scope.columnDef.length; i++ ) {
+            def = scope.columnDef[i];
+            var partialTemplate;
+            var width = scope.tableConfiguration.columnWidths[i];
+            if ( def.treeField ) {
+              var iconTemplate = "<div class='icon-content' ng-click='openLevel(item,$event)' style='padding-left:"+(scope.item._nodeLevel*scope.tableConfiguration.padding)+"px;'><i ng-if=\"item.hasOwnProperty('_isExpanded') && item._isExpanded == true\" class='{{tableConfiguration.iconExpanded}}' ></i><i ng-if=\"item.hasOwnProperty('_isExpanded') && item._isExpanded == false\" class='{{tableConfiguration.iconCollapsed}}' ></i></div>";
+              partialTemplate ="<div>{{item[\'"+def['field']+"\']}}</div>";
+              partialTemplate = "<div class='cell cell-tree' style='width:"+(width)+"%;'>" + iconTemplate + partialTemplate + "</div>";
+            } else {
+              partialTemplate ="<div class='cell' style='width:"+(width)+"%'><div>{{item[\'"+def['field']+"\']}}</div></div>";
+            }
+            html += partialTemplate;
+          }
+          html+="</div>";
+
+          //check if this member has children
+          element.html(html).show();
+          if ( angular.isArray(scope.item.children) ) {
+            // append the collection directive to this element
+            element.append("<tree-body ng-show='item._isExpanded' collection='item[childrenLabel]' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' controls='controls'></tree-body>");
+          }
+          // we need to tell angular to render the directive
+          $compile(element.contents())(scope);
+        }
+      };
+    })
+    .directive('treeHeader', function ($compile) {
+      return {
+        restrict : 'E',
+        replace : true,
+        scope : {
+          columnDef : "=",
+          tableConfiguration : "="
+        },
+        template : "<div class='tree-header'></div>",
+        link : function (scope, element) {
+          var html = "", def;
+          for ( var i = 0; i < scope.columnDef.length; i++ ) {
+            def = scope.columnDef[i];
+            var partialTemplate;
+            var width = scope.tableConfiguration.columnWidths[i];
+            partialTemplate ="<div class='header-cell' style='width:"+(width)+"%'><div>{{columnDef["+i+"]['displayName']}}</div></div>";
+            html += partialTemplate;
+          }
+
+          element.append(html);
+          $compile(element.contents())(scope);
+        }
+      }
+    })
+    .directive('treeBody', function () {
+      return {
+        restrict : 'E',
+        replace : true,
+        scope : {
+          collection : '=',
+          childrenLabel : '=',
+          columnDef : '=columnDef',
+          tableConfiguration : '=',
+          controls : '='
+        },
+        template : "<div><node-tree ng-repeat='nodeData in collection' node-data='nodeData' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' controls='controls'></node-tree></div>"
+      };
+    })
+    .directive('angularTreeGrid', function ($compile) {
+      function defineColumnWidth (colDefinition) {
+        var widths = [],
+          occupiedPercentage = 0,
+          columnNoSet = 0,
+          defaultWidth,
+          column,
+          i;
+
+        for( i = 0; i < colDefinition.length; i++ ) {
+          column = colDefinition[i];
+          widths[i] = column.hasOwnProperty('width') ? column['width'] : 0;
+          if( !widths[i] ) {
+            columnNoSet++;
+          }
+          occupiedPercentage += widths[i];
+        }
+
+        defaultWidth = (100-occupiedPercentage) / columnNoSet;
+
+        for( i = 0; i < widths.length; i++ ) {
+          widths[i] = widths[i] || defaultWidth;
+        }
+
+        return widths;
+      }
+
+      return {
+        restrict : 'E',
+        replace : true,
+        scope : {
+          treeConfig : '='
+        },
+        template : "<div class='angular-tree-main-content'></div>",
+        link : function (scope, element) {
+          function setFlag ( node, nestedField, flag, currentLevel ) {
+            node ? node._nodeLevel = currentLevel:null;
+            if ( node && node[nestedField] && node[nestedField].length > 0 ) {
+              node._isExpanded = flag;
+              node._isChild = false;
+              for ( var  nodeIndex = 0; nodeIndex < node[nestedField].length; nodeIndex++ ) {
+                setFlag( node[nestedField][nodeIndex], nestedField, flag, currentLevel+1 );
+              }
+            } else {
+              node._isChild = true;
+            }
+          }
+
+          function addFlagCollection (data) {
+            var collection = data.collection,
+              nestedField = data.childrenField,
+              flag = data.collapseElements,
+              nodeRootIndex;
+
+            for( nodeRootIndex = 0; nodeRootIndex < collection.length; nodeRootIndex++ ) {
+              setFlag(collection[nodeRootIndex], nestedField, flag, 0);
+            }
+          }
+
+          var unBind = scope.$watch('treeConfig', function (data) {
+
+            if ( data && data.collection && data.colDefinition ) {
+              addFlagCollection(scope.treeConfig);
+              console.log(scope.treeConfig);
+              if (angular.isArray(scope.treeConfig.collection)) {
+                scope.tableConfiguration = {
+                  iconExpanded  : scope.treeConfig.iconExpanded,
+                  iconCollapsed : scope.treeConfig.iconCollapsed,
+                  padding       : scope.treeConfig.padding,
+                  columnWidths  : defineColumnWidth(scope.treeConfig.colDefinition)
+                };
+
+                scope.gridModel = {
+                  childrenField : scope.treeConfig.childrenField,
+                  columnDef : scope.treeConfig.colDefinition,
+                  rowSelectedId : null
+                };
+
+                scope.treeConfig.controls = {
+                  onRowSelected : function ( item ) {
+                    console.log(item);
+                  },
+                  expandAll : function () {
+
+                  },
+                  collapseAll : function () {
+
+                  }
+                };
+
+                // append the collection directive to this element
+                var treeHeader  = "<tree-header ng-if='treeConfig.enableHeader' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration'></tree-header>";
+                var treeContent = "<tree-body  class='tree-content' collection='treeConfig.collection' children-label='treeConfig.childrenField' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration' controls='treeConfig.controls'></tree-body>"
+                var html = treeHeader+treeContent;
+                element.append(html);
+                // we need to tell angular to render the directive
+                $compile(element.contents())(scope);
+              }
+              unBind();
+            }
+          });
+        }
+      };
+    });
+})();
+
