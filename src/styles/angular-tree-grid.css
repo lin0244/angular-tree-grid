@@ -24,6 +24,9 @@
     border-bottom: 1px solid #dddddd;
     cursor: pointer;
     display: flex; }
+    .angular-tree-main-content div.node.active {
+      background-color: aqua;
+      color: white; }
     .angular-tree-main-content div.node div {
       display: inline-block; }
     .angular-tree-main-content div.node div.cell-tree div {

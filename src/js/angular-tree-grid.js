@@ -11,7 +11,8 @@
           childrenLabel : "=",
           columnDef : '=columnDef',
           tableConfiguration  : '=',
-          controls : '='
+          controls : '=',
+          globals : '='
         },
         link : function (scope, element) {
           scope.openLevel = function (item,$event) {
@@ -19,7 +20,7 @@
             item._isExpanded = !item._isExpanded;
           };
 
-          var html = "<div class='node' ng-click='controls.onRowSelected(item)'>", def;
+          var html = "<div class='node' ng-class='{active : globals._uuiSelected == item._uui}' ng-click='controls.onRowSelected(item)'>", def;
 
           for ( var i = 0; i < scope.columnDef.length; i++ ) {
             def = scope.columnDef[i];
@@ -40,7 +41,7 @@
           element.html(html).show();
           if ( angular.isArray(scope.item.children) ) {
             // append the collection directive to this element
-            element.append("<tree-body ng-show='item._isExpanded' collection='item[childrenLabel]' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' controls='controls'></tree-body>");
+            element.append("<tree-body ng-show='item._isExpanded' collection='item[childrenLabel]' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' globals='globals' controls='controls'></tree-body>");
           }
           // we need to tell angular to render the directive
           $compile(element.contents())(scope);
@@ -80,9 +81,10 @@
           childrenLabel : '=',
           columnDef : '=columnDef',
           tableConfiguration : '=',
-          controls : '='
+          controls : '=',
+          globals : '='
         },
-        template : "<div><node-tree ng-repeat='nodeData in collection' node-data='nodeData' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' controls='controls'></node-tree></div>"
+        template : "<div><node-tree ng-repeat='nodeData in collection' node-data='nodeData' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' globals='globals' controls='controls'></node-tree></div>"
       };
     })
     .directive('angularTreeGrid', function ($compile) {
@@ -120,6 +122,25 @@
         },
         template : "<div class='angular-tree-main-content'></div>",
         link : function (scope, element) {
+          function guid() {
+            function s4() {
+              return Math.floor((1 + Math.random()) * 0x10000)
+                .toString(16)
+                .substring(1);
+            }
+            return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+              s4() + '-' + s4() + s4() + s4();
+          }
+
+          function generateUID(tree, nestedField){
+            var node;
+            for ( var i = 0; i < tree.length; i++ ) {
+              node = tree[i];
+              node._uui = guid();
+              generateUID(node[nestedField]||[], nestedField);
+            }
+          }
+
           function setFlag ( node, nestedField, flag, currentLevel ) {
             node ? node._nodeLevel = currentLevel:null;
             if ( node && node[nestedField] && node[nestedField].length > 0 ) {
@@ -147,8 +168,9 @@
           var unBind = scope.$watch('treeConfig', function (data) {
 
             if ( data && data.collection && data.colDefinition ) {
+              generateUID(scope.treeConfig.collection,scope.treeConfig.childrenField);
               addFlagCollection(scope.treeConfig);
-              console.log(scope.treeConfig);
+
               if (angular.isArray(scope.treeConfig.collection)) {
                 scope.tableConfiguration = {
                   iconExpanded  : scope.treeConfig.iconExpanded,
@@ -157,15 +179,21 @@
                   columnWidths  : defineColumnWidth(scope.treeConfig.colDefinition)
                 };
 
-                scope.gridModel = {
+                scope.globals = {
                   childrenField : scope.treeConfig.childrenField,
                   columnDef : scope.treeConfig.colDefinition,
-                  rowSelectedId : null
+                  _uuiSelected : null
                 };
 
                 scope.treeConfig.controls = {
                   onRowSelected : function ( item ) {
-                    console.log(item);
+                    if ( scope.globals._uuiSelected != item._uui ) {
+                      scope.globals._uuiSelected = item._uui;
+                      scope.treeConfig.onClickRow(item);
+                    } else {
+                      scope.globals._uuiSelected = null;
+                      scope.treeConfig.onClickRow(null);
+                    }
                   },
                   expandAll : function () {
 
@@ -177,7 +205,7 @@
 
                 // append the collection directive to this element
                 var treeHeader  = "<tree-header ng-if='treeConfig.enableHeader' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration'></tree-header>";
-                var treeContent = "<tree-body  class='tree-content' collection='treeConfig.collection' children-label='treeConfig.childrenField' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration' controls='treeConfig.controls'></tree-body>"
+                var treeContent = "<tree-body  class='tree-content' collection='treeConfig.collection' children-label='treeConfig.childrenField' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration' globals='globals' controls='treeConfig.controls'></tree-body>"
                 var html = treeHeader+treeContent;
                 element.append(html);
                 // we need to tell angular to render the directive
@@ -190,4 +218,3 @@
       };
     });
 })();
-
