@@ -15,10 +15,12 @@
           globals : '='
         },
         link : function (scope, element) {
-          if( item.hasOwnProperty('_isExpanded') ) {
+          scope.openLevel = function (item,$event) {
             $event.stopPropagation();
-            item._isExpanded = !item._isExpanded;
-          }
+            if( item.hasOwnProperty('_isExpanded') ) {            
+              item._isExpanded = !item._isExpanded;
+            }
+          };
 
           var html = "<div class='node' ng-class='{active : globals._uuiSelected == item._uui}' ng-click='controls.onRowSelected(item)'>", def;
 
@@ -218,3 +220,4 @@
       };
     });
 })();
+
