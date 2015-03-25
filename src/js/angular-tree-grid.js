@@ -15,10 +15,10 @@
           globals : '='
         },
         link : function (scope, element) {
-          scope.openLevel = function (item,$event) {
+          if( item.hasOwnProperty('_isExpanded') ) {
             $event.stopPropagation();
             item._isExpanded = !item._isExpanded;
-          };
+          }
 
           var html = "<div class='node' ng-class='{active : globals._uuiSelected == item._uui}' ng-click='controls.onRowSelected(item)'>", def;
 
