@@ -30,10 +30,19 @@
             var width = scope.tableConfiguration.columnWidths[i];
             if ( def.treeField ) {
               var iconTemplate = "<div class='icon-content' ng-click='openLevel(item,$event)' style='padding-left:"+(scope.item._nodeLevel*scope.tableConfiguration.padding)+"px;'><i ng-if=\"item.hasOwnProperty('_isExpanded') && item._isExpanded == true\" class='{{tableConfiguration.iconExpanded}}' ></i><i ng-if=\"item.hasOwnProperty('_isExpanded') && item._isExpanded == false\" class='{{tableConfiguration.iconCollapsed}}' ></i></div>";
-              partialTemplate ="<div>{{item[\'"+def['field']+"\']}}</div>";
+              if( def.hasOwnProperty('cellTemplate') ) {
+                partialTemplate = def['cellTemplate'];
+              } else {
+                partialTemplate ="<div>{{item[\'"+def['field']+"\']}}</div>";
+              }
               partialTemplate = "<div class='cell cell-tree' style='width:"+(width)+"%;'>" + iconTemplate + partialTemplate + "</div>";
             } else {
-              partialTemplate ="<div class='cell' style='width:"+(width)+"%'><div>{{item[\'"+def['field']+"\']}}</div></div>";
+              if ( def.hasOwnProperty('cellTemplate') ) {
+                partialTemplate ="<div class='cell' style='width:"+(width)+"%'>"+def['cellTemplate']+"</div>";
+              } else {
+                partialTemplate ="<div class='cell' style='width:"+(width)+"%'><div>{{item[\'"+def['field']+"\']}}</div></div>";
+              }
+
             }
             html += partialTemplate;
           }
@@ -156,22 +165,52 @@
             }
           }
 
-          function addFlagCollection (data) {
+          function addFlagCollection (data, flagToSet) {
             var collection = data.collection,
               nestedField = data.childrenField,
-              flag = data.collapseElements,
+              //flag = data.collapseElements,
               nodeRootIndex;
 
             for( nodeRootIndex = 0; nodeRootIndex < collection.length; nodeRootIndex++ ) {
-              setFlag(collection[nodeRootIndex], nestedField, flag, 0);
+              setFlag(collection[nodeRootIndex], nestedField, flagToSet, 0);
             }
+          }
+
+          function findChildByUUI ( treeNode, nestedField, uuiSelected, cb ) {
+            if( treeNode && treeNode[nestedField] && treeNode[nestedField].length > 0 ) {
+              var node;
+              for( var i = 0; i < treeNode[nestedField].length; i++ ) {
+                var node = treeNode[nestedField][i];
+                if ( node._uui === uuiSelected ) {
+                  cb ? cb(treeNode):null;
+                  return treeNode;
+                } else {
+                  findChildByUUI( node, nestedField, uuiSelected );
+                }
+              }
+              return null;
+            }
+            return null;
+          }
+
+          function getParentNode (treeConfig, uuiSelected, cb) {
+            var collection = treeConfig.collection,
+              nestedField = treeConfig.childrenField,
+              result;
+
+            if ( uuiSelected ) {
+              for( var i = 0; i < collection.length; i++ ) {
+                result = result || findChildByUUI( collection[i], nestedField, uuiSelected, cb);
+              }
+            }
+            return result;
           }
 
           var unBind = scope.$watch('treeConfig', function (data) {
 
             if ( data && data.collection && data.colDefinition ) {
               generateUID(scope.treeConfig.collection,scope.treeConfig.childrenField);
-              addFlagCollection(scope.treeConfig);
+              addFlagCollection(scope.treeConfig, scope.treeConfig.collapseElements);
 
               if (angular.isArray(scope.treeConfig.collection)) {
                 scope.tableConfiguration = {
@@ -182,9 +221,10 @@
                 };
 
                 scope.globals = {
-                  childrenField : scope.treeConfig.childrenField,
-                  columnDef : scope.treeConfig.colDefinition,
-                  _uuiSelected : null
+                  childrenField  : scope.treeConfig.childrenField,
+                  columnDef      : scope.treeConfig.colDefinition,
+                  disabledLevels : scope.treeConfig.disabledLevels,
+                  _uuiSelected   : null
                 };
 
                 scope.treeConfig.controls = {
@@ -198,12 +238,25 @@
                     }
                   },
                   expandAll : function () {
-
+                    addFlagCollection(scope.treeConfig, true);
                   },
                   collapseAll : function () {
-
+                    addFlagCollection(scope.treeConfig, false);
+                  },
+                  getParentNode : function () {
+                    getParentNode( scope.treeConfig, scope.globals._uuiSelected , function (parentNode) {
+                    });
                   }
                 };
+
+                var selectByDefault = scope.treeConfig.selectByDefault;
+                if( selectByDefault ) {
+                  var node = scope.treeConfig.collection[0];
+                  scope.globals._uuiSelected = node._uui;
+                  if( selectByDefault.triggerClick ) {
+                    scope.treeConfig.onClickRow( node );
+                  }
+                }
 
                 // append the collection directive to this element
                 var treeHeader  = "<tree-header ng-if='treeConfig.enableHeader' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration'></tree-header>";
