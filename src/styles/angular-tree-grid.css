@@ -27,6 +27,11 @@
     .angular-tree-main-content div.node.active {
       background-color: aqua;
       color: white; }
+    .angular-tree-main-content div.node.disabled {
+      cursor: not-allowed !important; }
+    .angular-tree-main-content div.node.disabled:hover {
+      background-color: inherit !important;
+      color: inherit !important; }
     .angular-tree-main-content div.node div {
       display: inline-block; }
     .angular-tree-main-content div.node div.cell-tree div {

@@ -17,12 +17,12 @@
         link : function (scope, element) {
           scope.openLevel = function (item,$event) {
             $event.stopPropagation();
-            if( item.hasOwnProperty('_isExpanded') ) {            
+            if( item.hasOwnProperty('_isExpanded') ) {
               item._isExpanded = !item._isExpanded;
             }
           };
 
-          var html = "<div class='node' ng-class='{active : globals._uuiSelected == item._uui}' ng-click='controls.onRowSelected(item)'>", def;
+          var html = "<div class='node' ng-class='{active : globals._uuiSelected == item._uui, disabled : globals.disabledLevels.indexOf(item._nodeLevel) >= 0}' ng-click='controls.onRowSelected(item)'>", def;
 
           for ( var i = 0; i < scope.columnDef.length; i++ ) {
             def = scope.columnDef[i];
@@ -217,24 +217,27 @@
                   iconExpanded  : scope.treeConfig.iconExpanded,
                   iconCollapsed : scope.treeConfig.iconCollapsed,
                   padding       : scope.treeConfig.padding,
-                  columnWidths  : defineColumnWidth(scope.treeConfig.colDefinition)
+                  columnWidths  : defineColumnWidth(scope.treeConfig.colDefinition),
+                  bgColor       : scope.treeConfig.contentColor
                 };
 
                 scope.globals = {
                   childrenField  : scope.treeConfig.childrenField,
                   columnDef      : scope.treeConfig.colDefinition,
-                  disabledLevels : scope.treeConfig.disabledLevels,
+                  disabledLevels : scope.treeConfig.disabledLevels || [],
                   _uuiSelected   : null
                 };
 
                 scope.treeConfig.controls = {
                   onRowSelected : function ( item ) {
-                    if ( scope.globals._uuiSelected != item._uui ) {
-                      scope.globals._uuiSelected = item._uui;
-                      scope.treeConfig.onClickRow(item);
-                    } else {
-                      scope.globals._uuiSelected = null;
-                      scope.treeConfig.onClickRow(null);
+                    if( scope.globals.disabledLevels.indexOf( item._nodeLevel ) < 0 ) {
+                      if ( scope.globals._uuiSelected != item._uui ) {
+                        scope.globals._uuiSelected = item._uui;
+                        scope.treeConfig.onClickRow(item);
+                      } else {
+                        scope.globals._uuiSelected = null;
+                        scope.treeConfig.onClickRow(null);
+                      }
                     }
                   },
                   expandAll : function () {
@@ -260,7 +263,7 @@
 
                 // append the collection directive to this element
                 var treeHeader  = "<tree-header ng-if='treeConfig.enableHeader' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration'></tree-header>";
-                var treeContent = "<tree-body  class='tree-content' collection='treeConfig.collection' children-label='treeConfig.childrenField' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration' globals='globals' controls='treeConfig.controls'></tree-body>"
+                var treeContent = "<tree-body  class='tree-content' style='background-color: {{treeConfig.contentColor}}' collection='treeConfig.collection' children-label='treeConfig.childrenField' column-def='treeConfig.colDefinition' table-configuration='tableConfiguration' globals='globals' controls='treeConfig.controls'></tree-body>"
                 var html = treeHeader+treeContent;
                 element.append(html);
                 // we need to tell angular to render the directive
