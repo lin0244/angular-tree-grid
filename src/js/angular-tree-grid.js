@@ -1,6 +1,80 @@
 (function () {
   'use strict';
 
+  function treeFilter(list, labels) {
+    var currentPath = [];
+
+    function depthFirstTraversal(o, fn) {
+        currentPath.push(o);
+        if (o.children) {
+            for (var i = 0, len = o.children.length; i < len; i++) {
+                depthFirstTraversal(o.children[i], fn);
+            }
+        }
+        fn.call(null, o, currentPath);
+        currentPath.pop();
+    }
+
+    function shallowCopy(o) {
+        var result = {};
+        for (var k in o) {
+            if (o.hasOwnProperty(k)) {
+                result[k] = o[k];
+            }
+        }
+        return result;
+    }
+
+    function copyNode(node) {
+        var n = shallowCopy(node);
+        if (n.children) {
+            n.children = [];
+        }
+        return n;
+    }
+
+    function filterTree(root, labels) {
+        root.copied = copyNode(root); // create a copy of root
+        var filteredResult = root.copied;
+
+        depthFirstTraversal(root, function (node, branch) {
+            //console.log("node.$$hashKey: " + node.$$hashKey);
+            // if this is a leaf node _and_ we are looking for its ID
+            //if( labels[0].toLowerCase().indexOf(node.descripcion.toLowerCase()) !== -1 ) {  // has the same description
+            if (node.descripcion.toLowerCase().indexOf(labels[0].toLowerCase()) !== -1) {    // filter is content in any description
+                // use the path that the depthFirstTraversal hands us that
+                // leads to this leaf.  copy any part of this branch that
+                // hasn't been copied, at minimum that will be this leaf
+                for (var i = 0, len = branch.length; i < len; i++) {
+                    if (branch[i].copied) {
+                        continue;
+                    } // already copied
+
+                    branch[i].copied = copyNode(branch[i]);
+                    // now attach the copy to the new 'parellel' tree we are building
+                    branch[i - 1].copied.children.push(branch[i].copied);
+                }
+            }
+        });
+
+        depthFirstTraversal(root, function (node, branch) {
+            delete node.copied; // cleanup the mutation of the original tree
+        });
+        return filteredResult;
+    }
+
+    var filteredList = [];
+    for (var i = 0, len = list.length; i < len; i++) {
+        var filtered = filterTree(list[i], labels);
+        if ((filtered && filtered.children && filtered.children.length > 0) ||
+            filtered.descripcion.toLowerCase() === labels[0].toLowerCase()) {
+            filteredList.push(filtered);
+        }
+    }
+
+    return filteredList;
+  }
+
   angular.module('angular-tree-grid',[])
     .directive('nodeTree', function ($compile) {
       return {
@@ -95,7 +169,7 @@
           controls : '=',
           globals : '='
         },
-        template : "<div><node-tree ng-repeat='nodeData in collection' node-data='nodeData' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' globals='globals' controls='controls'></node-tree></div>"
+        template : "<div><node-tree ng-repeat='nodeData in collection' ng-show='nodeData._show' node-data='nodeData' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' globals='globals' controls='controls'></node-tree></div>"
       };
     })
     .directive('angularTreeGrid', function ($compile) {
@@ -152,6 +226,25 @@
             }
           }
 
+          function matchWithFiltered (tree, filteredTree, nestedField) {
+            var node, filteredIndex, nodeFiltered, nodeIndex = 0, i;
+            for ( i = 0; i < tree.length; i++ ) {
+              node = tree[i];
+              node._show = false;
+              for( filteredIndex = 0; filteredIndex < filteredTree.length && !node._show; filteredIndex++ ) {
+                nodeFiltered = filteredTree[filteredIndex];
+                if( node._uui === nodeFiltered._uui ) {
+                  node._show = true;
+                  matchWithFiltered(
+                    node[nestedField]||[],
+                    nodeFiltered[nestedField],
+                    nestedField
+                  );
+                }
+              }
+            }
+          }
+
           function setFlag ( node, nestedField, flag, currentLevel ) {
             node ? node._nodeLevel = currentLevel:null;
             if ( node && node[nestedField] && node[nestedField].length > 0 ) {
@@ -193,6 +286,23 @@
             return null;
           }
 
+          function isMyChild ( node, nestedField, uuiChild ) {
+            if( node._uui === uuiChild ) { // if is the node selected return itself
+              return node;
+            } else if( node._isChild ) { // validated if is left node to don't make more process
+              return null;
+            } else { // make process to do a loop over its children of this node
+              var child;
+              for ( var i = 0; i < node[nestedField].length; i++ ) {
+                child = node[nestedField][i];
+                var nodeSelected = isMyChild(child, nestedField, uuiChild);
+                if( nodeSelected ) {
+
+                }
+              }
+            }
+          }
+
           function getParentNode (treeConfig, uuiSelected, cb) {
             var collection = treeConfig.collection,
               nestedField = treeConfig.childrenField,
@@ -204,6 +314,26 @@
               }
             }
             return result;
+          }
+
+          function enableSearh () {
+            scope.treeConfig.filteredData = treeFilter(scope.treeConfig.collection, [""]);
+            scope.$watch('treeConfig.search', function (value) {
+
+              scope.treeConfig.filteredData = treeFilter(scope.treeConfig.collection, [value]);
+
+              matchWithFiltered(
+                scope.treeConfig.collection,
+                scope.treeConfig.filteredData,
+                scope.treeConfig.childrenField
+              );
+            });
+
+            matchWithFiltered(
+              scope.treeConfig.collection,
+              scope.treeConfig.filteredData,
+              scope.treeConfig.childrenField
+            );
           }
 
           var unBind = scope.$watch('treeConfig', function (data) {
@@ -254,10 +384,12 @@
 
                 var selectByDefault = scope.treeConfig.selectByDefault;
                 if( selectByDefault ) {
-                  var node = scope.treeConfig.collection[0];
-                  scope.globals._uuiSelected = node._uui;
-                  if( selectByDefault.triggerClick ) {
-                    scope.treeConfig.onClickRow( node );
+                  if( scope.treeConfig.collection && scope.treeConfig.collection[0] ) {
+                    var node = scope.treeConfig.collection[0];
+                    scope.globals._uuiSelected = node._uui;
+                    if( selectByDefault.triggerClick ) {
+                      scope.treeConfig.onClickRow( node );
+                    }
                   }
                 }
 
@@ -268,6 +400,10 @@
                 element.append(html);
                 // we need to tell angular to render the directive
                 $compile(element.contents())(scope);
+
+                if( scope.treeConfig.hasOwnProperty('search') ) {
+                  enableSearh();
+                }
               }
               unBind();
             }
