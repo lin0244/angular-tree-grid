@@ -5,75 +5,76 @@
     var currentPath = [];
 
     function depthFirstTraversal(o, fn) {
-        currentPath.push(o);
-        if (o.children) {
-            for (var i = 0, len = o.children.length; i < len; i++) {
-                depthFirstTraversal(o.children[i], fn);
-            }
+      currentPath.push(o);
+      if (o.children) {
+        for (var i = 0, len = o.children.length; i < len; i++) {
+          depthFirstTraversal(o.children[i], fn);
         }
-        fn.call(null, o, currentPath);
-        currentPath.pop();
+      }
+      fn.call(null, o, currentPath);
+      currentPath.pop();
     }
 
     function shallowCopy(o) {
-        var result = {};
-        for (var k in o) {
-            if (o.hasOwnProperty(k)) {
-                result[k] = o[k];
-            }
+      var result = {};
+      for (var k in o) {
+        if (o.hasOwnProperty(k)) {
+          result[k] = o[k];
         }
-        return result;
+      }
+      return result;
     }
 
     function copyNode(node) {
-        var n = shallowCopy(node);
-        if (n.children) {
-            n.children = [];
-        }
-        return n;
+      var n = shallowCopy(node);
+      if (n.children) {
+        n.children = [];
+      }
+      return n;
     }
 
     function filterTree(root, labels) {
-        root.copied = copyNode(root); // create a copy of root
-        var filteredResult = root.copied;
+      root.copied = copyNode(root); // create a copy of root
+      var filteredResult = root.copied;
 
-        depthFirstTraversal(root, function (node, branch) {
-            //console.log("node.$$hashKey: " + node.$$hashKey);
-            // if this is a leaf node _and_ we are looking for its ID
-            //if( labels[0].toLowerCase().indexOf(node.descripcion.toLowerCase()) !== -1 ) {  // has the same description
-            if (node.descripcion.toLowerCase().indexOf(labels[0].toLowerCase()) !== -1) {    // filter is content in any description
-                // use the path that the depthFirstTraversal hands us that
-                // leads to this leaf.  copy any part of this branch that
-                // hasn't been copied, at minimum that will be this leaf
-                for (var i = 0, len = branch.length; i < len; i++) {
-                    if (branch[i].copied) {
-                        continue;
-                    } // already copied
+      depthFirstTraversal(root, function (node, branch) {
+        //console.log("node.$$hashKey: " + node.$$hashKey);
+        // if this is a leaf node _and_ we are looking for its ID
+        //if( labels[0].toLowerCase().indexOf(node.descripcion.toLowerCase()) !== -1 ) {  // has the same description
+        if (node.descripcion.toLowerCase().indexOf(labels[0].toLowerCase()) !== -1) {    // filter is content in any description
+          // use the path that the depthFirstTraversal hands us that
+          // leads to this leaf.  copy any part of this branch that
+          // hasn't been copied, at minimum that will be this leaf
+          for (var i = 0, len = branch.length; i < len; i++) {
+            if (branch[i].copied) {
+              continue;
+            } // already copied
 
-                    branch[i].copied = copyNode(branch[i]);
-                    // now attach the copy to the new 'parellel' tree we are building
-                    branch[i - 1].copied.children.push(branch[i].copied);
-                }
-            }
-        });
+            branch[i].copied = copyNode(branch[i]);
+            // now attach the copy to the new 'parellel' tree we are building
+            branch[i - 1].copied.children.push(branch[i].copied);
+          }
+        }
+      });
 
-        depthFirstTraversal(root, function (node, branch) {
-            delete node.copied; // cleanup the mutation of the original tree
-        });
-        return filteredResult;
+      depthFirstTraversal(root, function (node, branch) {
+        delete node.copied; // cleanup the mutation of the original tree
+      });
+      return filteredResult;
     }
 
     var filteredList = [];
     for (var i = 0, len = list.length; i < len; i++) {
-        var filtered = filterTree(list[i], labels);
-        if ((filtered && filtered.children && filtered.children.length > 0) ||
-            filtered.descripcion.toLowerCase() === labels[0].toLowerCase()) {
-            filteredList.push(filtered);
-        }
+      var filtered = filterTree(list[i], labels);
+      if ((filtered && filtered.children && filtered.children.length > 0) ||
+        filtered.descripcion.toLowerCase() === labels[0].toLowerCase()) {
+        filteredList.push(filtered);
+      }
     }
 
     return filteredList;
   }
+
 
   angular.module('angular-tree-grid',[])
     .directive('nodeTree', function ($compile) {
@@ -403,6 +404,8 @@
 
                 if( scope.treeConfig.hasOwnProperty('search') ) {
                   enableSearh();
+                } else {
+                  matchWithFiltered( scope.treeConfig.collection, scope.treeConfig.collection, scope.treeConfig.childrenField );
                 }
               }
               unBind();
