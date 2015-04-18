@@ -246,6 +246,22 @@
             }
           }
 
+          function findByKeyAndValue (tree, nestedField, field, value) {
+            var node, i, result = null;
+            for ( i = 0; i < tree.length && !result; i++ ) {
+              node = tree[i];
+              if( node.hasOwnProperty(field) && node[field] == value ) {
+                return node;
+              } else {
+                result = findByKeyAndValue(node[nestedField], nestedField, field, value);
+              }
+              if( result ) {
+                return result;
+              }
+            }
+            return null;
+          }
+
           function setFlag ( node, nestedField, flag, currentLevel ) {
             node ? node._nodeLevel = currentLevel:null;
             if ( node && node[nestedField] && node[nestedField].length > 0 ) {
@@ -272,7 +288,6 @@
 
           function findChildByUUI ( treeNode, nestedField, uuiSelected, cb ) {
             if( treeNode && treeNode[nestedField] && treeNode[nestedField].length > 0 ) {
-              var node;
               for( var i = 0; i < treeNode[nestedField].length; i++ ) {
                 var node = treeNode[nestedField][i];
                 if ( node._uui === uuiSelected ) {
@@ -377,17 +392,47 @@
                   collapseAll : function () {
                     addFlagCollection(scope.treeConfig, false);
                   },
+                  selectByKeyAndValue : function (key, value) {
+                    var node = findByKeyAndValue(
+                      scope.treeConfig.collection,
+                      scope.treeConfig.childrenField,
+                      key,
+                      value
+                    );
+
+                    if( node ) {
+                      scope.globals._uuiSelected = node._uui;
+                    } else {
+                      scope.globals._uuiSelected = "";
+                    }
+
+                    scope.treeConfig.onClickRow( node );
+                  },
                   getParentNode : function () {
                     getParentNode( scope.treeConfig, scope.globals._uuiSelected , function (parentNode) {
                     });
                   }
                 };
 
-                var selectByDefault = scope.treeConfig.selectByDefault;
+                var selectByDefault = scope.treeConfig.selectByDefault, node;
                 if( selectByDefault ) {
-                  if( scope.treeConfig.collection && scope.treeConfig.collection[0] ) {
-                    var node = scope.treeConfig.collection[0];
-                    scope.globals._uuiSelected = node._uui;
+                  if( scope.treeConfig.collection && selectByDefault ) {
+                    if( selectByDefault.itemToSelect ) {
+                      node = findByKeyAndValue(
+                        scope.treeConfig.collection,
+                        scope.treeConfig.childrenField,
+                        selectByDefault.itemToSelect.field,
+                        selectByDefault.itemToSelect.value
+                      );
+                    } else if ( selectByDefault.firstByDefault ) {
+                      node = scope.treeConfig.collection[0] || null;
+                    }
+
+                    if( node ) {
+                      scope.globals._uuiSelected = node._uui;
+                    } else {
+                      scope.globals._uuiSelected = "";
+                    }
                     if( selectByDefault.triggerClick ) {
                       scope.treeConfig.onClickRow( node );
                     }
