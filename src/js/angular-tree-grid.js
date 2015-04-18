@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  function treeFilter(list, labels) {
+  function treeFilter(list, labels, fields) {
     var currentPath = [];
 
     function depthFirstTraversal(o, fn) {
@@ -33,6 +33,19 @@
       return n;
     }
 
+    function findOnFields ( node, label ) {
+      //if( node ) {
+        for(var i = 0 ;i < fields.length; i++ ) {
+          if( node.hasOwnProperty(fields[i]) ) {
+            if( (node[fields[i]].toLowerCase().indexOf(label.toLowerCase())) !== -1 ) {
+              return true;
+            }
+          }
+        }
+      //}
+      return false;
+    }
+
     function filterTree(root, labels) {
       root.copied = copyNode(root); // create a copy of root
       var filteredResult = root.copied;
@@ -41,7 +54,8 @@
         //console.log("node.$$hashKey: " + node.$$hashKey);
         // if this is a leaf node _and_ we are looking for its ID
         //if( labels[0].toLowerCase().indexOf(node.descripcion.toLowerCase()) !== -1 ) {  // has the same description
-        if (node.descripcion.toLowerCase().indexOf(labels[0].toLowerCase()) !== -1) {    // filter is content in any description
+        //if (node.descripcion.toLowerCase().indexOf(labels[0].toLowerCase()) !== -1) {    // filter is content in any description
+        if ( findOnFields(node, labels[0]) ) {    // filter is content in any description
           // use the path that the depthFirstTraversal hands us that
           // leads to this leaf.  copy any part of this branch that
           // hasn't been copied, at minimum that will be this leaf
@@ -173,7 +187,7 @@
         template : "<div><node-tree ng-repeat='nodeData in collection' ng-show='nodeData._show' node-data='nodeData' children-label='childrenLabel' column-def='columnDef' table-configuration='tableConfiguration' globals='globals' controls='controls'></node-tree></div>"
       };
     })
-    .directive('angularTreeGrid', function ($compile) {
+    .directive('angularTreeGrid', function ($compile, $filter) {
       function defineColumnWidth (colDefinition) {
         var widths = [],
           occupiedPercentage = 0,
@@ -333,10 +347,10 @@
           }
 
           function enableSearh () {
-            scope.treeConfig.filteredData = treeFilter(scope.treeConfig.collection, [""]);
+            scope.treeConfig.filteredData = treeFilter(scope.treeConfig.collection, [""], scope.globals.fields);
             scope.$watch('treeConfig.search', function (value) {
 
-              scope.treeConfig.filteredData = treeFilter(scope.treeConfig.collection, [value]);
+              scope.treeConfig.filteredData = treeFilter(scope.treeConfig.collection, [value], scope.globals.fields);
 
               matchWithFiltered(
                 scope.treeConfig.collection,
@@ -350,6 +364,17 @@
               scope.treeConfig.filteredData,
               scope.treeConfig.childrenField
             );
+          }
+
+          function getFields(){
+            var fields = [],
+              defs = scope.treeConfig.colDefinition;
+            for ( var i = 0; i < defs.length; i++ ) {
+              if( defs[i].hasOwnProperty('field') ) {
+                fields.push( defs[i]['field'] );
+              }
+            }
+            return fields;
           }
 
           var unBind = scope.$watch('treeConfig', function (data) {
@@ -371,8 +396,10 @@
                   childrenField  : scope.treeConfig.childrenField,
                   columnDef      : scope.treeConfig.colDefinition,
                   disabledLevels : scope.treeConfig.disabledLevels || [],
-                  _uuiSelected   : null
+                  _uuiSelected   : null,
+                  fields         : getFields()
                 };
+
 
                 scope.treeConfig.controls = {
                   onRowSelected : function ( item ) {
