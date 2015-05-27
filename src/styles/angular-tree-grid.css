@@ -39,7 +39,7 @@
     .angular-tree-main-content div.node div.cell-tree div.icon-content {
       padding-right: 5px; }
     .angular-tree-main-content div.node span.cell, .angular-tree-main-content div.node div.cell {
-      padding: 7px 0 7px 20px;
+      padding: 7px 0 7px 0px;
       border-right: 1px solid #dddddd; }
       .angular-tree-main-content div.node span.cell .icon-content, .angular-tree-main-content div.node div.cell .icon-content {
         width: 20px;
